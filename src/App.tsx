@@ -1,12 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 function App() {
   const [drives, setDrives] = useState<string[]>([]);
   const [trackNums, setTrackNums] = useState<Number[]>([]);
   const [error, setError] = useState("");
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     invoke<string[]>("list_drives")
@@ -21,54 +19,50 @@ function App() {
 
   }, [drives]);
 
-  // Play the selected track
-  async function playTrack(track_number: number) { // Rust reads CD  →  bytes  →  Blob  →  URL  →  Audio  →  sound
+  // Play the selected track through the Rust player (rodio)
+  async function playTrack(track_number: number) {
     try {
-      if (audioRef.current) { // If there is an audio element playing, pause it and revoke the object URL
-        audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src); // Free the memory allocated to the object URL
-      }
-      const bytes = await invoke<ArrayBuffer>("play_selected_track", { path: drives[0], trackNumber: track_number }); // Get the audio data for the selected track
-      const url = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" })); // Create a URL for the audio data
-      const audio = new Audio(url); // Create a new audio element
-      audioRef.current = audio; // Set the audio element to the current audio element
-      audio.play(); // Play the audio
+      await invoke("play_track", { path: drives[0], track: track_number });
     } catch (error) {
       setError(String(error));
     }
   }
 
-  // Pause the audio
-  function stopTrack() {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      URL.revokeObjectURL(audioRef.current.src);
+  // Stop the track (Rust player)
+  async function stopTrack() {
+    try {
+      await invoke("stop_track");
+    } catch (error) {
+      setError(String(error));
     }
   }
 
-  // Continiue Playing Track
-  function continuePlayingTrack() {
-    if (audioRef.current) {
-      audioRef.current.play();
+  // Pause the track (Rust player)
+  async function pauseTrack() {
+    try {
+      await invoke("pause_track");
+    } catch (error) {
+      setError(String(error));
     }
   }
 
-  // Forward Track
-  function forwardTrack() {
-    if (audioRef.current) {
-      audioRef.current.currentTime += 10;
+  // Resume a paused track (Rust player)
+  async function resumeTrack() {
+    try {
+      await invoke("resume_track");
+    } catch (error) {
+      setError(String(error));
     }
   }
 
-  // Rewind Track
-  function rewindTrack() {
-    if (audioRef.current) {
-      audioRef.current.currentTime -= 10;
+  // Seek to a specific position in the track (Rust player)
+  async function seekTrack(position: number) {
+    try {
+      await invoke("seek_track", { position });
+    } catch (error) {
+      setError(String(error));
     }
   }
-
-
-
   return (
     <main>
       <h1>CD drives</h1>
@@ -90,10 +84,11 @@ function App() {
           <li key={n}>Track {n} <button onClick={() => playTrack(n)}>Play</button></li>
         ))}
       </ul>
+      <button onClick={pauseTrack}>Pause</button>
+      <button onClick={resumeTrack}>Resume</button>
       <button onClick={stopTrack}>Stop</button>
-      <button onClick={forwardTrack}>+10s</button>
-      <button onClick={rewindTrack}>-10s</button>
-      <button onClick={continuePlayingTrack}>Continue</button>
+      <button onClick={() => seekTrack(10)}>Seek to 10 seconds</button>
+      <button onClick={() => seekTrack(-10)}>Back 10 seconds</button>
     </main>
   );
 }

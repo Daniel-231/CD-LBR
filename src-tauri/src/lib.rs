@@ -1,5 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod cd; // I guess import in rust
+mod player;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -21,8 +22,9 @@ fn list_drives() -> Result<Vec<String>, String>{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(player::spawn_player())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, cd::list_drives, cd::list_track_nums, cd::preview_track, cd::play_selected_track])
+        .invoke_handler(tauri::generate_handler![greet, cd::list_drives, cd::list_track_nums, cd::preview_track, player::play_track, player::stop_track, player::pause_track, player::resume_track, player::seek_track])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

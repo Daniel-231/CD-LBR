@@ -39,13 +39,3 @@ pub fn preview_track(path: String) -> Result<Response, String> {
     Ok(Response::new(create_wav(pcm)))
     
 }
-
-#[tauri::command]
-pub fn play_selected_track(path: String, track_number: u8) -> Result<Response, String> {
-    let reader = CdReader::open_path(&path).map_err(|e| e.to_string())?;
-    let toc = reader.read_toc().map_err(|e| e.to_string())?;
-
-    let pcm = reader.read_track(&toc, track_number).map_err(|e| e.to_string())?;
-
-    Ok(Response::new(create_wav(pcm)))
-}
